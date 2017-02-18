@@ -580,12 +580,12 @@ void qtranslate_cypher_body(pugi::xml_node body, string outputVariables, ofstrea
   if (body.child("conjunct").empty()) 
     return;
 
-  file << "MATCH ";
+  // file << "MATCH ";
 
   for (pugi::xml_node conjunct : body.children("conjunct"))
   {
       if (! first)
-        file << ", ";
+        file << "\t";
 
       // process source and target of conjunct
       srcVar = conjunct.attribute("src").value();
@@ -639,21 +639,25 @@ void qtranslate_cypher_body(pugi::xml_node body, string outputVariables, ofstrea
       {
         // (s)-[r*]->(t) 
         // WHERE ALL (x in type(r) WHERE x=type1 OR ... OR x=typeN)
-        file << "(" << ((srcVar[0] == '?') ? srcVar.substr(1) : "gmarkvariable" + srcVar) << ")-[";
-
+        // file << "(" << ((srcVar[0] == '?') ? srcVar.substr(1) : "gmarkvariable" + srcVar) << ")-[";
+        file << "((";
         firstSymbol = true;
+        string prv_symb = "";
         do
         {
-          if (! firstSymbol) 
-            file << "|p" << (string)currentNode.child("symbol").text().get();
-          else
-            file << ":p" << (string)currentNode.child("symbol").text().get();
+          if (!firstSymbol) {
+            if (prv_symb != (string)currentNode.child("symbol").text().get())
+              file << "+(" << (string)currentNode.child("symbol").text().get() << ")";
+          } else {
+            file << "(" << (string)currentNode.child("symbol").text().get() << ")";
+          }
 
           firstSymbol = false;
+          prv_symb = (string) currentNode.child("symbol").text().get();
           currentNode = currentNode.next_sibling("concat"); 
         } while (currentNode);
 
-        file << "*]->(" << ((trgVar[0] == '?') ? trgVar.substr(1) : "gmarkvariable" + trgVar) << ")";
+        file << "))*";
 
         /*
         if (whereClause.length() == 0) 
@@ -687,7 +691,7 @@ void qtranslate_cypher_body(pugi::xml_node body, string outputVariables, ofstrea
         }
 
         firstSymbol = true;
-        file << "(" << ((srcVar[0] == '?') ? srcVar.substr(1) : "gmarkvariable" + srcVar) << ")";
+        file << "(((";
         do 
         {
           string valueedge (currentSymbol.attribute("inverse").value());
@@ -696,11 +700,11 @@ void qtranslate_cypher_body(pugi::xml_node body, string outputVariables, ofstrea
             // ()<-[p]-() 
             if (! firstSymbol) 
             {
-              file << "()<-[:p" << currentSymbol.text().get() << "]-";
+              file << "." << currentSymbol.text().get() << "-";
             }
             else
             {
-              file << "<-[:p" << currentSymbol.text().get() << "]-";
+              file << currentSymbol.text().get() << "-";
               firstSymbol = false;
             }
           }
@@ -709,42 +713,42 @@ void qtranslate_cypher_body(pugi::xml_node body, string outputVariables, ofstrea
             // ()-[p]->() 
             if (! firstSymbol) 
             { 
-              file << "()-[:p" << currentSymbol.text().get() << "]->";
+              file << "." << currentSymbol.text().get();
             }
             else
             {
-              file << "-[:p" << currentSymbol.text().get() << "]->";
+              file << currentSymbol.text().get();
               firstSymbol = false;
             }
           }
           currentSymbol = currentSymbol.next_sibling("symbol"); 
         } while (currentSymbol);
-        file << "(" << ((trgVar[0] == '?') ? trgVar.substr(1) : "gmarkvariable" + trgVar) << ")";
+        file << ")))";
       }
       first = false;
   }
 
-  if(whereClause.length() > 0) 
-    file << " WHERE " << whereClause;
+  // if(whereClause.length() > 0) 
+  //   file << " WHERE " << whereClause;
 
-  if(outputVariables.length() == 0) 
-  {
-    // a boolean query
-    file << " RETURN \"true\" LIMIT 1";
-  }
-  else
-  {
-    if (distinct) 
-    {
-      file << " RETURN DISTINCT " << outputVariables;
-      //hack for selectivity experiments
-      //file << " RETURN count(*)";
+  // if(outputVariables.length() == 0) 
+  // {
+  //   // a boolean query
+  //   file << " RETURN \"true\" LIMIT 1";
+  // }
+  // else
+  // {
+  //   if (distinct) 
+  //   {
+  //     file << " RETURN DISTINCT " << outputVariables;
+  //     //hack for selectivity experiments
+  //     //file << " RETURN count(*)";
 
-    }
-    else 
-      file << " RETURN " << outputVariables;
+  //   }
+  //   else 
+  //     file << " RETURN " << outputVariables;
 
-  }
+  // }
 }
 
 
@@ -852,14 +856,14 @@ void qtranslate_cypher(pugi::xml_node query, ofstream & file)
   // for each body, construct a MATCH-WHERE-RETURN statement
   for (pugi::xml_node body : query.child("bodies").children("body"))
   {
-      if (! first)
-        file << " UNION ";
-      else
-        first = false;
+      // if (! first)
+      //   file << " UNION ";
+      // else
+      //   first = false;
 
       qtranslate_cypher_body(body, outputVariables, file);
   }
-  file << ";" << endl;
+  file << endl;
 }
 
 
